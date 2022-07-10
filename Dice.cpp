@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include "./Dice.hpp"
 
 void Dice::roll(uint8_t count, uint8_t size, uint8_t* result) {
