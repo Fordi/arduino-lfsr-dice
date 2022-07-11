@@ -82,9 +82,9 @@ void Dice::roll(uint16_t count, uint8_t size, uint8_t* result) {
   for (uint16_t d = 0; d < count; d++) {
     uint16_t out = 0;
     uint16_t ent = 0;
-    // If an analog entropy source has been specified, use it.
+    // If an entropy source has been specified, use it.
     if (entropySource != nullptr) {
-      ent = (*entropySource)(state);
+      ent = (*entropySource)(state) & 1;
     }
     for (uint8_t i = 0; i < 16; i++) {
       // Tap the existing state, xor'd with read-in entropy bit
