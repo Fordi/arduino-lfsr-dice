@@ -112,7 +112,12 @@ void Dice::roll(uint16_t count, uint8_t size, uint8_t* result) {
   }
 }
 
-Dice::Dice() {
+Dice::Dice(EntropySource* entSource) {
+  entropySource = entSource;
+  init();
+}
+
+void Dice::init() {
   // Initialize the tap and state
   #ifdef ARDUINO
     tapNum = micros() % TAP_COUNT;
@@ -133,7 +138,6 @@ Dice::Dice() {
   }
 }
 
-Dice::Dice(EntropySource* entSource) {
-  entropySource = entSource;
-  Dice();
+Dice::Dice() {
+  init();
 }

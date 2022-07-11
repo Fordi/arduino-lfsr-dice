@@ -17,6 +17,7 @@ class Dice {
     uint16_t state = 0xACE1u;
     EntropySource* entropySource = nullptr;
     uint16_t tapNum = 0;
+    void init();
   public:
     Dice();
     Dice(EntropySource* entSource);
