@@ -11,6 +11,9 @@
   It's recommended to pick a prime number for this array, to avoid 
     syncing up any looped periods.  The footprint in PROGMEM will be
     (2 * TAP_COUNT) bytes.
+  
+  Taps are in random order, so any subset should provide sufficiently
+    unpredictable behavior.
 
   Primes to 1031:
       2      3      5      7     11     13     17     19     23     29 
