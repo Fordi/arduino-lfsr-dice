@@ -1,5 +1,7 @@
-#include <Arduino.h>
 #include <stdint.h>
+#ifndef ARDUINO
+  #include <sys/time.h>
+#endif
 
 /*
   taps.h contains all the LFSR tap masks that have a period of 65535
@@ -37,9 +39,6 @@
 
 using namespace std;
 
-// Spacing for noise reads (must be a power of 2)
-#define DT 64
-
 uint8_t parity(uint16_t n) {
   uint8_t result = 0;
   while (n != 0) {
@@ -49,27 +48,62 @@ uint8_t parity(uint16_t n) {
   return result;
 };
 
-void Dice::roll(uint8_t count, uint8_t size, uint8_t* result) {
-  // For DT == 64, this is 32 + the lower 5 bits of state
-  // Point is to randomize the read interval, so a radio signal
-  // can't be tuned consistently to interfere in a predictable manner.
-  uint16_t dt = (DT >> 1) + (state & ((DT >> 1) - 1));
-  // Read and XOR the low bits of a pair of analogReads, spaced apart by DT.
-  uint16_t ent = analogRead(entropyPin) & 1;
-  delay(dt);
-  ent = ent ^ (analogRead(entropyPin) & 1);
-  delay(dt);
-  for (uint8_t d = 0; d < count; d++) {
+/**
+ * This uses a Fibonacci-style linear feedback shift register with a couple of additions
+ *   to improve entropy
+ * 
+ * * For every shift, there's a 1-in-8 chance that the register will use a different tap set
+ * * For every 16 shifts, we read from an external source of entropy to flip the feedback bit
+ * * We read _just_ the lowest bit from each shift to build out the number, and shift 16 times
+ *    to produce an output word
+ * 
+ * Visualization of an lfsr with entropy.  This is tap 0x002D; the tap used changes from time to time.
+ * 
+ * * The tap is applied (generating a new bit)
+ * * The state is shifted right by 1
+ * * The tapped bit is placed in bit 15 (F below)
+ * 
+ * -----------------------------------------------------------------  -----
+ * | F | E | D | C | B | A | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |>>|ent|
+ * -----------------------------------------------------------------  -----
+ *   ^                                       |       |   |       |      |              
+ *   --------------xor---------------------------------------------------
+ *                                                               |
+ *                                                              out
+ *
+ * It fills an array, `result` with `count` randoms between 1 and `size`, inclusive.
+ * 
+ * @param count The number of dice to roll
+ * @param size The type of die to roll
+ * @param result a buffer of `count` elements to store the result
+ */
+
+void Dice::roll(uint16_t count, uint8_t size, uint8_t* result) {  
+  for (uint16_t d = 0; d < count; d++) {
     uint16_t out = 0;
+    uint16_t ent = 0;
+    // If an analog entropy source has been specified, use it.
+    if (entropySource != nullptr) {
+      ent = (*entropySource)(state);
+    }
     for (uint8_t i = 0; i < 16; i++) {
       // Tap the existing state, xor'd with read-in entropy bit
-      uint8_t bit = parity(state & taps[tapNum]) ^ ent;
+      uint8_t fbbit = parity(state & taps[tapNum]);
+      uint8_t bit = fbbit ^ ent;
       // Add to feedback
       state = (state >> 1) | (bit << 15);
       // pack bit onto output and shift
       out = ((out << 1) | (state & 1));
-      // 1-in-4 chance to move to the next tap, to avoid predictable sequencing
-      if ((bit ^ ent) == 0 && (state & 1) == 1) {
+      // 1-in-8 chance to move to the next tap, to avoid predictable sequencing
+      if (
+        // The feedback bit is the same as the entropy bit
+        fbbit == ent
+        // The lowest bit of state is the same as the entropy bit
+        && (state & 1) == ent
+        // Current parity of state is the same as the second bit of the state
+        && parity(state) == ((state >> 1) & 1)
+      ) {
+        // Shift to the next tap
         tapNum = (tapNum + 1) % TAP_COUNT;
       }
     };
@@ -78,8 +112,17 @@ void Dice::roll(uint8_t count, uint8_t size, uint8_t* result) {
   }
 }
 
-Dice::Dice(uint8_t pin) {
-  entropyPin = pin;
+Dice::Dice() {
+  // Initialize the tap and state
+  #ifdef ARDUINO
+    tapNum = micros() % TAP_COUNT;
+    state = (micros() % 0xFFFE) + 1;
+  #else
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    tapNum = (uint16_t) (tv.tv_usec % TAP_COUNT);
+    state = (uint16_t) (tv.tv_usec % 0xFFFE) + 1;
+  #endif
   uint8_t dice[10];
   // Roll a fresh seed as part of construction.
   roll(10, 8, &dice[0]);
@@ -88,5 +131,9 @@ Dice::Dice(uint8_t pin) {
   for (int i = 0; i < dice[9]; i++) {
     roll(10, 100, &dice[0]);
   }
-  // Mean total init time should be (5 * DT) ms, or about 1/3 second.
+}
+
+Dice::Dice(EntropySource* entSource) {
+  entropySource = entSource;
+  Dice();
 }

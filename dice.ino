@@ -1,9 +1,15 @@
 // See https://www.arduino.cc/reference/en/libraries/ezbutton/
 #include <ezButton.h>
 #include "./Dice.hpp"
+#include "./AnalogEntropySource.hpp"
 
 ezButton rollBtn(7);
-Dice dice(A3);
+
+// Spacing for noise reads (must be a power of 2)
+#define DT 64
+
+AnalogEntropySource source(A3);
+Dice dice(&source);
 
 void setup() {
   // Other init
