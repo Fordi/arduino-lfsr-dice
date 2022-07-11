@@ -6,7 +6,6 @@ ezButton rollBtn(7);
 Dice dice(A3);
 
 void setup() {
-  dice.init();
   // Other init
   Serial.begin(9600);
   rollBtn.setDebounceTime(64);
@@ -15,16 +14,16 @@ void setup() {
 void loop() {
   rollBtn.loop();
   if (rollBtn.isPressed()) {
-    uint8_t dice[10];
+    uint8_t rolls[10];
     // Roll 4d6
-    roll(4, 6, &dice);
+    dice.roll(4, 6, &rolls[0]);
     uint8_t sum = 0;
     for (int i = 0; i < 4; i++) {
-      if (i !== 0) {
+      if (i != 0) {
         Serial.print(", ");
       }
-      sum += dice[i];
-      Serial.print(dice[i]);
+      sum += rolls[i];
+      Serial.print(rolls[i]);
     }
     Serial.println(sum);
   }
