@@ -2,19 +2,17 @@
 #define DICE_HPP
 
 #include <stdint.h>
+#include "./EntropySource.hpp"
 #include "./taps.h"
 
 using namespace std;
 
-class EntropySource {
-  public:
-    virtual uint16_t operator()(uint16_t state) = 0;
-};
+#define INIT_ROLLS 10
 
 class Dice {
   private:
-    // Can be any non-zero state.
-    uint16_t state = 0xACE1u;
+    // Can be any non-zero state.  Using the tap set itself to pick the init state.
+    uint16_t state = taps[taps[0] % TAP_COUNT];
     EntropySource* entropySource = nullptr;
     uint16_t tapNum = 0;
     void init();
@@ -24,4 +22,4 @@ class Dice {
     void roll(uint16_t count, uint8_t size, uint8_t* result);
 };
 
-#endif
+#endif // DICE_HPP

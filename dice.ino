@@ -5,11 +5,19 @@
 
 ezButton rollBtn(7);
 
-// Spacing for noise reads (must be a power of 2)
+// Spacing for debounce time
 #define DT 64
 
-AnalogEntropySource source(A3);
-Dice dice(&source);
+// This is where you pick the sacrificial analog pin for extra entropy
+// Comment out to not use extra entropy
+#define ENTROPY_PIN A3
+
+#ifdef ENTROPY_PIN
+  AnalogEntropySource source(A3);
+  Dice dice(&source);
+#else
+  Dice dice();
+#endif
 
 void setup() {
   // Other init

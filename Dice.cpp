@@ -42,6 +42,12 @@
 
 using namespace std;
 
+/**
+ * Check the parity of a 16 bit number.
+ * 
+ * @param n the input number
+ * @return 1 or 0, based on the parity
+ */
 uint8_t parity(uint16_t n) {
   uint8_t result = 0;
   while (n != 0) {
@@ -52,35 +58,11 @@ uint8_t parity(uint16_t n) {
 };
 
 /**
- * This uses a Fibonacci-style linear feedback shift register with a couple of additions
- *   to improve entropy
- * 
- * * For every shift, there's a 1-in-8 chance that the register will use a different tap set
- * * For every 16 shifts, we read from an external source of entropy to flip the feedback bit
- * * We read _just_ the lowest bit from each shift to build out the number, and shift 16 times
- *    to produce an output word
- * 
- * Visualization of an lfsr with entropy.  This is tap 0x002D; the tap used changes from time to time.
- * 
- * * The tap is applied (generating a new bit)
- * * The state is shifted right by 1
- * * The tapped bit is placed in bit 15 (F below)
- * 
- * -----------------------------------------------------------------  -----
- * | F | E | D | C | B | A | 9 | 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |>>|ent|
- * -----------------------------------------------------------------  -----
- *   ^                                       |       |   |       |      |              
- *   --------------xor---------------------------------------------------
- *                                                               |
- *                                                              out
- *
- * It fills an array, `result` with `count` randoms between 1 and `size`, inclusive.
- * 
+ * Fills an array, `result` with `count` randoms between 1 and `size`, inclusive.
  * @param count The number of dice to roll
  * @param size The type of die to roll
  * @param result a buffer of `count` elements to store the result
  */
-
 void Dice::roll(uint16_t count, uint8_t size, uint8_t* result) {  
   for (uint16_t d = 0; d < count; d++) {
     uint16_t out = 0;
@@ -115,11 +97,25 @@ void Dice::roll(uint16_t count, uint8_t size, uint8_t* result) {
   }
 }
 
+/**
+ * Construct a new Dice:: Dice object without an external entropy source
+ */
+Dice::Dice() {
+  init();
+}
+
+/**
+ * Construct a new Dice:: Dice object with an external entropy source
+ * @param entSource 
+ */
 Dice::Dice(EntropySource* entSource) {
   entropySource = entSource;
   init();
 }
 
+/**
+ * Initialize the Dice object; to do this, it shuffles itself a bit based on its first rolls.
+ */
 void Dice::init() {
   // Initialize the tap and state
   #ifdef ARDUINO
@@ -131,16 +127,12 @@ void Dice::init() {
     tapNum = (uint16_t) (tv.tv_usec % TAP_COUNT);
     state = (uint16_t) (tv.tv_usec % 0xFFFE) + 1;
   #endif
-  uint8_t dice[10];
+  uint8_t dice[INIT_ROLLS];
   // Roll a fresh seed as part of construction.
-  roll(10, 8, &dice[0]);
-  // Grab the ninth roll, and re-roll that many times to shuffle the initial seed.
-  uint8_t result = dice[9];
-  for (int i = 0; i < dice[9]; i++) {
+  roll(INIT_ROLLS, INIT_ROLLS, &dice[0]);
+  // Grab the last roll, and re-roll that many times to shuffle the initial seed.
+  uint8_t result = dice[INIT_ROLLS - 1];
+  for (int i = 0; i < dice[INIT_ROLLS - 1]; i++) {
     roll(10, 100, &dice[0]);
   }
-}
-
-Dice::Dice() {
-  init();
 }

@@ -1,10 +1,12 @@
 #ifndef ANALOG_ENTROPY_SOURCE_HPP
 #define ANALOG_ENTROPY_SOURCE_HPP
 
-#include "./Dice.hpp"
+#include <Arduino.h>
+#include <stdint.h>
+#include "./EntropySource.hpp"
 
 // Spacing for noise reads (must be a power of 2)
-#define DT 64
+#define NOISE_DT 64
 
 class AnalogEntropySource : public EntropySource {
   private:
